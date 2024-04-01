@@ -1,14 +1,17 @@
 package gui;
+import java.awt.image.BufferedImage;
 import javax.swing.*;
+import javax.swing.event.*;
 import java.awt.*;
 import java.awt.event.*;
-import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.io.*;
 import javax.imageio.ImageIO;
 
 public class BasicMalovani extends JFrame {
     private JPanel kresliciPlocha;
+    private JList<String> seznamTvaruList;
+    private DefaultListModel<String> listModel;
     private ArrayList<Shape> seznamUtvaru;
     private JLabel lblLine;
     private JLabel lblRectangle;
@@ -23,7 +26,7 @@ public class BasicMalovani extends JFrame {
 
     public BasicMalovani() {
         setTitle("Jednoduché malování");
-        setSize(600, 500);
+        setSize(800, 500);
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE); // Změna chování na zavření
 
         addWindowListener(new WindowAdapter() {
@@ -82,6 +85,22 @@ public class BasicMalovani extends JFrame {
         kresliciPlocha.setBackground(Color.WHITE);
         seznamUtvaru = new ArrayList<>();
 
+        listModel = new DefaultListModel<>();
+        seznamTvaruList = new JList<>(listModel);
+        seznamTvaruList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        seznamTvaruList.addListSelectionListener(new ListSelectionListener() {
+            public void valueChanged(ListSelectionEvent e) {
+                int selectedIndex = seznamTvaruList.getSelectedIndex();
+                if (selectedIndex != -1) {
+                    Shape selectedShape = seznamUtvaru.get(selectedIndex); // Získání vybraného tvaru
+                    selectedShape.setColor(Color.RED); // Nastavení barvy vybraného tvaru
+                    repaint();
+                }
+            }
+        });
+
+        JScrollPane scrollPane = new JScrollPane(seznamTvaruList);
+
         kresliciPlocha.addMouseListener(new MouseAdapter() {
             public void mousePressed(MouseEvent e) {
                 startX = e.getX();
@@ -94,6 +113,7 @@ public class BasicMalovani extends JFrame {
                     case Shape.OVAL:
                     case Shape.TRIANGLE:
                         seznamUtvaru.add(new Shape(currentShapeType, startX, startY, endX, endY, currentColor, false));
+                        listModel.addElement(getShapeName(currentShapeType)); // Přidat název tvaru do seznamu
                         saved = false; // Nastavit, že provedené změny nebyly uloženy
                         break;
                     default:
@@ -133,6 +153,7 @@ public class BasicMalovani extends JFrame {
 
         getContentPane().setLayout(new BorderLayout());
         getContentPane().add(kresliciPlocha, BorderLayout.CENTER);
+        getContentPane().add(scrollPane, BorderLayout.EAST); // Přidat seznam tvarů na pravou stranu
         getContentPane().add(panelNastroju, BorderLayout.NORTH);
         getContentPane().add(stavovyRadek, BorderLayout.SOUTH);
 
@@ -156,7 +177,7 @@ public class BasicMalovani extends JFrame {
 
         exitMenuItem.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                onClose(); // Při kliknutí na "Ukončit aplikaci" zavoláme metodu onClose()
+                onClose();
             }
         });
 
@@ -284,8 +305,27 @@ public class BasicMalovani extends JFrame {
             return color;
         }
 
+        public void setColor(Color color) {
+            this.color = color;
+        }
+
         public boolean isFilled() {
             return filled;
+        }
+    }
+
+    private String getShapeName(int type) {
+        switch (type) {
+            case Shape.LINE:
+                return "Přímka";
+            case Shape.RECTANGLE:
+                return "Obdélník";
+            case Shape.OVAL:
+                return "Ovál";
+            case Shape.TRIANGLE:
+                return "Trojúhelník";
+            default:
+                return "";
         }
     }
 
