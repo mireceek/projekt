@@ -93,7 +93,7 @@ public class BasicMalovani extends JFrame {
                 int selectedIndex = seznamTvaruList.getSelectedIndex();
                 if (selectedIndex != -1) {
                     Shape selectedShape = seznamUtvaru.get(selectedIndex); // Získání vybraného tvaru
-                    selectedShape.setColor(Color.RED); // Nastavení barvy vybraného tvaru
+                    selectedShape.setColor(Color.RED); // Nastavení bary vybraného tvaru
                     repaint();
                 }
             }
