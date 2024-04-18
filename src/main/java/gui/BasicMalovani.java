@@ -1,12 +1,21 @@
 package gui;
-import java.awt.image.BufferedImage;
-import javax.swing.*;
-import javax.swing.event.*;
+
 import java.awt.*;
 import java.awt.event.*;
-import java.util.ArrayList;
+import java.awt.image.BufferedImage;
 import java.io.*;
+import java.util.ArrayList;
 import javax.imageio.ImageIO;
+import javax.swing.*;
+import javax.swing.event.*;
+import javax.xml.parsers.*;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+
+import org.w3c.dom.*;
+import org.xml.sax.*;
 
 public class BasicMalovani extends JFrame {
     private JPanel kresliciPlocha;
@@ -93,7 +102,7 @@ public class BasicMalovani extends JFrame {
                 int selectedIndex = seznamTvaruList.getSelectedIndex();
                 if (selectedIndex != -1) {
                     Shape selectedShape = seznamUtvaru.get(selectedIndex); // Získání vybraného tvaru
-                    selectedShape.setColor(Color.RED); // Nastavení bary vybraného tvaru
+                    selectedShape.setColor(Color.RED); // Nastavení barvy vybraného tvaru
                     repaint();
                 }
             }
@@ -157,10 +166,40 @@ public class BasicMalovani extends JFrame {
         getContentPane().add(panelNastroju, BorderLayout.NORTH);
         getContentPane().add(stavovyRadek, BorderLayout.SOUTH);
 
+        JButton changeColorButton = new JButton("Změnit barvu");
+        changeColorButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                int selectedIndex = seznamTvaruList.getSelectedIndex();
+                if (selectedIndex != -1) {
+                    Color newColor = JColorChooser.showDialog(BasicMalovani.this, "Vyberte barvu", seznamUtvaru.get(selectedIndex).getColor());
+                    if (newColor != null) {
+                        seznamUtvaru.get(selectedIndex).setColor(newColor);
+                        repaint();
+                    }
+                }
+            }
+        });
+
+        JButton changePositionButton = new JButton("Změnit pozici");
+        changePositionButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                int selectedIndex = seznamTvaruList.getSelectedIndex();
+                if (selectedIndex != -1) {
+                    // Zde můžete implementovat logiku pro změnu pozice objektu
+                    // Například umožnit uživateli přetáhnout objekt myší na novou pozici
+                }
+            }
+        });
+
+        panelNastroju.add(changeColorButton);
+        panelNastroju.add(changePositionButton);
+
         JMenuBar menuBar = new JMenuBar();
         JMenu fileMenu = new JMenu("Soubor");
         JMenuItem saveJPGMenuItem = new JMenuItem("Uložit jako JPG");
         JMenuItem savePNGMenuItem = new JMenuItem("Uložit jako PNG");
+        JMenuItem saveXMLMenuItem = new JMenuItem("Uložit jako XML");
+        JMenuItem openXMLMenuItem = new JMenuItem("Otevřít XML");
         JMenuItem exitMenuItem = new JMenuItem("Ukončit aplikaci");
 
         saveJPGMenuItem.addActionListener(new ActionListener() {
@@ -175,6 +214,18 @@ public class BasicMalovani extends JFrame {
             }
         });
 
+        saveXMLMenuItem.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                saveToXML();
+            }
+        });
+
+        openXMLMenuItem.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                loadFromXML();
+            }
+        });
+
         exitMenuItem.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 onClose();
@@ -183,6 +234,8 @@ public class BasicMalovani extends JFrame {
 
         fileMenu.add(saveJPGMenuItem);
         fileMenu.add(savePNGMenuItem);
+        fileMenu.add(saveXMLMenuItem);
+        fileMenu.add(openXMLMenuItem);
         fileMenu.addSeparator();
         fileMenu.add(exitMenuItem);
 
@@ -225,6 +278,84 @@ public class BasicMalovani extends JFrame {
         return label;
     }
 
+    private void saveToXML() {
+        try {
+            DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+            Document doc = dBuilder.newDocument();
+
+            Element rootElement = doc.createElement("Shapes");
+            doc.appendChild(rootElement);
+
+            for (Shape shape : seznamUtvaru) {
+                Element shapeElement = doc.createElement("Shape");
+                shapeElement.setAttribute("type", Integer.toString(shape.getType()));
+                shapeElement.setAttribute("x1", Integer.toString(shape.getX1()));
+                shapeElement.setAttribute("y1", Integer.toString(shape.getY1()));
+                shapeElement.setAttribute("x2", Integer.toString(shape.getX2()));
+                shapeElement.setAttribute("y2", Integer.toString(shape.getY2()));
+                shapeElement.setAttribute("color", "#" + Integer.toHexString(shape.getColor().getRGB()).substring(2));
+                shapeElement.setAttribute("filled", Boolean.toString(shape.isFilled()));
+                rootElement.appendChild(shapeElement);
+            }
+
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setDialogTitle("Uložit jako XML");
+            int userSelection = fileChooser.showSaveDialog(this);
+            if (userSelection == JFileChooser.APPROVE_OPTION) {
+                File fileToSave = fileChooser.getSelectedFile();
+                String filePath = fileToSave.getAbsolutePath();
+                if (!filePath.toLowerCase().endsWith(".xml")) {
+                    filePath += ".xml"; // Ujistíme se, že soubor má příponu .xml
+                }
+                TransformerFactory transformerFactory = TransformerFactory.newInstance();
+                Transformer transformer = transformerFactory.newTransformer();
+                DOMSource source = new DOMSource(doc);
+                StreamResult result = new StreamResult(new File(filePath));
+                transformer.transform(source, result);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void loadFromXML() {
+        try {
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setDialogTitle("Otevřít XML soubor");
+            int userSelection = fileChooser.showOpenDialog(this);
+            if (userSelection == JFileChooser.APPROVE_OPTION) {
+                File xmlFile = fileChooser.getSelectedFile();
+                DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+                DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+                Document doc = dBuilder.parse(xmlFile);
+
+                doc.getDocumentElement().normalize();
+
+                NodeList shapeList = doc.getElementsByTagName("Shape");
+
+                for (int temp = 0; temp < shapeList.getLength(); temp++) {
+                    org.w3c.dom.Node shapeNode = shapeList.item(temp);
+                    if (shapeNode.getNodeType() == org.w3c.dom.Node.ELEMENT_NODE) {
+                        Element shapeElement = (Element) shapeNode;
+                        int type = Integer.parseInt(shapeElement.getAttribute("type"));
+                        int x1 = Integer.parseInt(shapeElement.getAttribute("x1"));
+                        int y1 = Integer.parseInt(shapeElement.getAttribute("y1"));
+                        int x2 = Integer.parseInt(shapeElement.getAttribute("x2"));
+                        int y2 = Integer.parseInt(shapeElement.getAttribute("y2"));
+                        Color color = Color.decode(shapeElement.getAttribute("color"));
+                        boolean filled = Boolean.parseBoolean(shapeElement.getAttribute("filled"));
+                        seznamUtvaru.add(new Shape(type, x1, y1, x2, y2, color, filled));
+                        listModel.addElement(getShapeName(type));
+                    }
+                }
+                kresliciPlocha.repaint(); // Oprava: Repaint se volá na JPanel místo na JFrame
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     private void saveImage(String format) {
         JFileChooser fileChooser = new JFileChooser();
         fileChooser.setDialogTitle("Uložit jako");
@@ -262,6 +393,7 @@ public class BasicMalovani extends JFrame {
         private int x1, y1, x2, y2;
         private Color color;
         private boolean filled;
+        private int width = 1; // Šířka tvaru
 
         public Shape(int type, int x1, int y1, int x2, int y2, Color color, boolean filled) {
             this.type = type;
@@ -311,6 +443,14 @@ public class BasicMalovani extends JFrame {
 
         public boolean isFilled() {
             return filled;
+        }
+
+        public int getWidth() {
+            return width;
+        }
+
+        public void setWidth(int width) {
+            this.width = width;
         }
     }
 
