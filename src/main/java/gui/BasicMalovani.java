@@ -185,8 +185,18 @@ public class BasicMalovani extends JFrame {
             public void actionPerformed(ActionEvent e) {
                 int selectedIndex = seznamTvaruList.getSelectedIndex();
                 if (selectedIndex != -1) {
-                    // Zde můžete implementovat logiku pro změnu pozice objektu
-                    // Například umožnit uživateli přetáhnout objekt myší na novou pozici
+                    // Zde umožníte uživateli zadat nové souřadnice pro změnu pozice objektu
+                    String xCoord = JOptionPane.showInputDialog(BasicMalovani.this, "Zadej novou X souřadnici:");
+                    String yCoord = JOptionPane.showInputDialog(BasicMalovani.this, "Zadej novou Y souřadnici:");
+                    try {
+                        int newX = Integer.parseInt(xCoord);
+                        int newY = Integer.parseInt(yCoord);
+                        seznamUtvaru.get(selectedIndex).setX1(newX);
+                        seznamUtvaru.get(selectedIndex).setY1(newY);
+                        repaint();
+                    } catch (NumberFormatException ex) {
+                        JOptionPane.showMessageDialog(BasicMalovani.this, "Neplatné souřadnice!", "Chyba", JOptionPane.ERROR_MESSAGE);
+                    }
                 }
             }
         });
@@ -423,6 +433,14 @@ public class BasicMalovani extends JFrame {
 
         public int getY2() {
             return y2;
+        }
+
+        public void setX1(int x1) {
+            this.x1 = x1;
+        }
+
+        public void setY1(int y1) {
+            this.y1 = y1;
         }
 
         public void setX2(int x2) {
