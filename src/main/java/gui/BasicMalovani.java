@@ -1,5 +1,4 @@
 package gui;
-
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
@@ -48,11 +47,14 @@ public class BasicMalovani extends JFrame {
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
-                for (Shape shape : seznamUtvaru) {
-                    g.setColor(shape.getColor());
+                Graphics2D g2 = (Graphics2D) g;
+                for (int i = 0; i < seznamUtvaru.size(); i++) {
+                    Shape shape = seznamUtvaru.get(i);
+                    g2.setColor(shape.getColor());
+                    g2.setStroke(new BasicStroke(shape.getWidth())); // Nastavit tloušťku čáry
                     switch (shape.getType()) {
                         case Shape.LINE:
-                            g.drawLine(shape.getX1(), shape.getY1(), shape.getX2(), shape.getY2());
+                            g2.drawLine(shape.getX1(), shape.getY1(), shape.getX2(), shape.getY2());
                             break;
                         case Shape.RECTANGLE:
                             int width = Math.abs(shape.getX2() - shape.getX1());
@@ -60,9 +62,9 @@ public class BasicMalovani extends JFrame {
                             int startX = Math.min(shape.getX1(), shape.getX2());
                             int startY = Math.min(shape.getY1(), shape.getY2());
                             if (shape.isFilled()) {
-                                g.fillRect(startX, startY, width, height);
+                                g2.fillRect(startX, startY, width, height);
                             } else {
-                                g.drawRect(startX, startY, width, height);
+                                g2.drawRect(startX, startY, width, height);
                             }
                             break;
                         case Shape.OVAL:
@@ -71,18 +73,18 @@ public class BasicMalovani extends JFrame {
                             startX = Math.min(shape.getX1(), shape.getX2());
                             startY = Math.min(shape.getY1(), shape.getY2());
                             if (shape.isFilled()) {
-                                g.fillOval(startX, startY, width, height);
+                                g2.fillOval(startX, startY, width, height);
                             } else {
-                                g.drawOval(startX, startY, width, height);
+                                g2.drawOval(startX, startY, width, height);
                             }
                             break;
                         case Shape.TRIANGLE:
                             int[] xPoints = {shape.getX1(), shape.getX2(), (shape.getX1() + shape.getX2()) / 2};
                             int[] yPoints = {shape.getY2(), shape.getY2(), shape.getY1()};
                             if (shape.isFilled()) {
-                                g.fillPolygon(xPoints, yPoints, 3);
+                                g2.fillPolygon(xPoints, yPoints, 3);
                             } else {
-                                g.drawPolygon(xPoints, yPoints, 3);
+                                g2.drawPolygon(xPoints, yPoints, 3);
                             }
                             break;
                         default:
@@ -122,7 +124,7 @@ public class BasicMalovani extends JFrame {
                     case Shape.OVAL:
                     case Shape.TRIANGLE:
                         seznamUtvaru.add(new Shape(currentShapeType, startX, startY, endX, endY, currentColor, false));
-                        listModel.addElement(getShapeName(currentShapeType)); // Přidat název tvaru do seznamu
+                        listModel.addElement(getShapeName(currentShapeType) + " " + (seznamUtvaru.size() + 1)); // Přidat název tvaru do seznamu
                         saved = false; // Nastavit, že provedené změny nebyly uloženy
                         break;
                     default:
@@ -201,8 +203,43 @@ public class BasicMalovani extends JFrame {
             }
         });
 
+        JButton deleteShapeButton = new JButton("Smazat tvar");
+        deleteShapeButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                int selectedIndex = seznamTvaruList.getSelectedIndex();
+                if (selectedIndex != -1) {
+                    seznamUtvaru.remove(selectedIndex);
+                    listModel.remove(selectedIndex);
+                    repaint();
+                }
+            }
+        });
+
+        JButton changeThicknessButton = new JButton("Změnit tloušťku čáry");
+        changeThicknessButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                int selectedIndex = seznamTvaruList.getSelectedIndex();
+                if (selectedIndex != -1) {
+                    String thicknessInput = JOptionPane.showInputDialog(BasicMalovani.this, "Zadej novou tloušťku čáry:");
+                    try {
+                        int newThickness = Integer.parseInt(thicknessInput);
+                        if (newThickness > 0) {
+                            seznamUtvaru.get(selectedIndex).setWidth(newThickness);
+                            repaint();
+                        } else {
+                            JOptionPane.showMessageDialog(BasicMalovani.this, "Tloušťka čáry musí být kladné číslo!", "Chyba", JOptionPane.ERROR_MESSAGE);
+                        }
+                    } catch (NumberFormatException ex) {
+                        JOptionPane.showMessageDialog(BasicMalovani.this, "Neplatná tloušťka čáry!", "Chyba", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            }
+        });
+
         panelNastroju.add(changeColorButton);
         panelNastroju.add(changePositionButton);
+        panelNastroju.add(deleteShapeButton);
+        panelNastroju.add(changeThicknessButton);
 
         JMenuBar menuBar = new JMenuBar();
         JMenu fileMenu = new JMenu("Soubor");
@@ -297,7 +334,8 @@ public class BasicMalovani extends JFrame {
             Element rootElement = doc.createElement("Shapes");
             doc.appendChild(rootElement);
 
-            for (Shape shape : seznamUtvaru) {
+            for (int i = 0; i < seznamUtvaru.size(); i++) {
+                Shape shape = seznamUtvaru.get(i);
                 Element shapeElement = doc.createElement("Shape");
                 shapeElement.setAttribute("type", Integer.toString(shape.getType()));
                 shapeElement.setAttribute("x1", Integer.toString(shape.getX1()));
@@ -306,6 +344,7 @@ public class BasicMalovani extends JFrame {
                 shapeElement.setAttribute("y2", Integer.toString(shape.getY2()));
                 shapeElement.setAttribute("color", "#" + Integer.toHexString(shape.getColor().getRGB()).substring(2));
                 shapeElement.setAttribute("filled", Boolean.toString(shape.isFilled()));
+                shapeElement.setAttribute("width", Integer.toString(shape.getWidth())); // Uložit tloušťku čáry
                 rootElement.appendChild(shapeElement);
             }
 
@@ -323,6 +362,8 @@ public class BasicMalovani extends JFrame {
                 DOMSource source = new DOMSource(doc);
                 StreamResult result = new StreamResult(new File(filePath));
                 transformer.transform(source, result);
+                saved = true; // Nastavit, že změny byly uloženy
+                stavovyRadek.setText("Uloženo do " + filePath);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -330,23 +371,24 @@ public class BasicMalovani extends JFrame {
     }
 
     private void loadFromXML() {
-        try {
-            JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setDialogTitle("Otevřít XML soubor");
-            int userSelection = fileChooser.showOpenDialog(this);
-            if (userSelection == JFileChooser.APPROVE_OPTION) {
-                File xmlFile = fileChooser.getSelectedFile();
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Otevřít XML soubor");
+        int userSelection = fileChooser.showOpenDialog(this);
+        if (userSelection == JFileChooser.APPROVE_OPTION) {
+            File selectedFile = fileChooser.getSelectedFile();
+            try {
                 DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
                 DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-                Document doc = dBuilder.parse(xmlFile);
-
+                Document doc = dBuilder.parse(selectedFile);
                 doc.getDocumentElement().normalize();
 
                 NodeList shapeList = doc.getElementsByTagName("Shape");
+                seznamUtvaru.clear();
+                listModel.clear();
 
                 for (int temp = 0; temp < shapeList.getLength(); temp++) {
-                    org.w3c.dom.Node shapeNode = shapeList.item(temp);
-                    if (shapeNode.getNodeType() == org.w3c.dom.Node.ELEMENT_NODE) {
+                    Node shapeNode = shapeList.item(temp);
+                    if (shapeNode.getNodeType() == Node.ELEMENT_NODE) {
                         Element shapeElement = (Element) shapeNode;
                         int type = Integer.parseInt(shapeElement.getAttribute("type"));
                         int x1 = Integer.parseInt(shapeElement.getAttribute("x1"));
@@ -355,121 +397,60 @@ public class BasicMalovani extends JFrame {
                         int y2 = Integer.parseInt(shapeElement.getAttribute("y2"));
                         Color color = Color.decode(shapeElement.getAttribute("color"));
                         boolean filled = Boolean.parseBoolean(shapeElement.getAttribute("filled"));
+                        int width = Integer.parseInt(shapeElement.getAttribute("width")); // Načíst tloušťku čáry
+
                         seznamUtvaru.add(new Shape(type, x1, y1, x2, y2, color, filled));
-                        listModel.addElement(getShapeName(type));
+                        seznamUtvaru.get(seznamUtvaru.size() - 1).setWidth(width); // Nastavit tloušťku čáry
+                        listModel.addElement(getShapeName(type)); // Přidat název tvaru do seznamu
                     }
                 }
-                kresliciPlocha.repaint(); // Oprava: Repaint se volá na JPanel místo na JFrame
+                saved = true; // Nastavit, že změny byly uloženy
+                stavovyRadek.setText("Načteno ze " + selectedFile.getAbsolutePath());
+                repaint();
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-        } catch (Exception e) {
-            e.printStackTrace();
         }
     }
 
     private void saveImage(String format) {
+        BufferedImage image = new BufferedImage(kresliciPlocha.getWidth(), kresliciPlocha.getHeight(), BufferedImage.TYPE_INT_RGB);
+        Graphics2D g2 = image.createGraphics();
+        kresliciPlocha.print(g2);
+        g2.dispose();
+
         JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setDialogTitle("Uložit jako");
+        fileChooser.setDialogTitle("Uložit jako " + format.toUpperCase());
         int userSelection = fileChooser.showSaveDialog(this);
         if (userSelection == JFileChooser.APPROVE_OPTION) {
             File fileToSave = fileChooser.getSelectedFile();
+            String filePath = fileToSave.getAbsolutePath();
+            if (!filePath.toLowerCase().endsWith("." + format)) {
+                filePath += "." + format; // Ujistíme se, že soubor má správnou příponu
+            }
             try {
-                String filePath = fileToSave.getAbsolutePath();
-                if (!filePath.endsWith("." + format)) {
-                    filePath += "." + format;
-                }
-                File imageFile = new File(filePath);
-                ImageIO.write(createImage(), format, imageFile);
+                ImageIO.write(image, format, new File(filePath));
+                saved = true; // Nastavit, že změny byly uloženy
+                stavovyRadek.setText("Uloženo do " + filePath);
             } catch (IOException ex) {
                 ex.printStackTrace();
             }
         }
     }
 
-    private BufferedImage createImage() {
-        BufferedImage image = new BufferedImage(kresliciPlocha.getWidth(), kresliciPlocha.getHeight(), BufferedImage.TYPE_INT_RGB);
-        Graphics2D g2d = image.createGraphics();
-        kresliciPlocha.printAll(g2d);
-        g2d.dispose();
-        return image;
-    }
-
-    private class Shape {
-        public static final int LINE = 0;
-        public static final int RECTANGLE = 1;
-        public static final int OVAL = 2;
-        public static final int TRIANGLE = 3;
-
-        private int type;
-        private int x1, y1, x2, y2;
-        private Color color;
-        private boolean filled;
-        private int width = 1; // Šířka tvaru
-
-        public Shape(int type, int x1, int y1, int x2, int y2, Color color, boolean filled) {
-            this.type = type;
-            this.x1 = x1;
-            this.y1 = y1;
-            this.x2 = x2;
-            this.y2 = y2;
-            this.color = color;
-            this.filled = filled;
+    private void onClose() {
+        if (!saved) {
+            int option = JOptionPane.showConfirmDialog(BasicMalovani.this,
+                    "Chcete uložit provedené změny?",
+                    "Uložit změny",
+                    JOptionPane.YES_NO_CANCEL_OPTION);
+            if (option == JOptionPane.YES_OPTION) {
+                saveToXML();
+            } else if (option == JOptionPane.CANCEL_OPTION || option == JOptionPane.CLOSED_OPTION) {
+                return;
+            }
         }
-
-        public int getType() {
-            return type;
-        }
-
-        public int getX1() {
-            return x1;
-        }
-
-        public int getY1() {
-            return y1;
-        }
-
-        public int getX2() {
-            return x2;
-        }
-
-        public int getY2() {
-            return y2;
-        }
-
-        public void setX1(int x1) {
-            this.x1 = x1;
-        }
-
-        public void setY1(int y1) {
-            this.y1 = y1;
-        }
-
-        public void setX2(int x2) {
-            this.x2 = x2;
-        }
-
-        public void setY2(int y2) {
-            this.y2 = y2;
-        }
-
-        public Color getColor() {
-            return color;
-        }
-
-        public void setColor(Color color) {
-            this.color = color;
-        }
-
-        public boolean isFilled() {
-            return filled;
-        }
-
-        public int getWidth() {
-            return width;
-        }
-
-        public void setWidth(int width) {
-            this.width = width;
-        }
+        dispose();
     }
 
     private String getShapeName(int type) {
@@ -487,27 +468,14 @@ public class BasicMalovani extends JFrame {
         }
     }
 
-    private void onClose() {
-        if (!saved) {
-            int result = JOptionPane.showConfirmDialog(this, "Chcete uložit změny?", "Upozornění", JOptionPane.YES_NO_CANCEL_OPTION);
-            if (result == JOptionPane.YES_OPTION) {
-                saveImage("jpg"); // Uložit jako JPG, můžete změnit na požadovaný formát
-                dispose(); // Ukončit aplikaci po uložení
-            } else if (result == JOptionPane.NO_OPTION) {
-                dispose(); // Ukončit aplikaci bez uložení
-            }
-            // Pokud uživatel vybere "Cancel", zůstane aplikace otevřená
-        } else {
-            dispose(); // Ukončit aplikaci, pokud nebyly provedeny žádné změny
-        }
-    }
-
     public static void main(String[] args) {
         SwingUtilities.invokeLater(new Runnable() {
             public void run() {
-                BasicMalovani malovani = new BasicMalovani();
-                malovani.setVisible(true);
+                BasicMalovani app = new BasicMalovani();
+                app.setVisible(true);
             }
         });
     }
 }
+
+
